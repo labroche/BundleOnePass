@@ -48,25 +48,24 @@ public class BoundedClustering<D> {
 	/** Default class constructor */
 	public BoundedClustering(int bound_type){
 		this.bound_type = bound_type;
-		r = new RandPerm();
+		this.r = new RandPerm();
+		this.rand = new Random();
+		this.clusters = new ArrayList<>();
+		this.comparisons = 0;
+		this.comptemplate = 0;
+		this.ambiguities = 0;
 	}
 	
 	/** Main di_blois.clustering function: scan the di_blois.dataset and assigns data objects to clusters */
 	public void cluster(List<D> dataset, Comparator<D> comp, double learning_sample, double size){
-		
-		
+
 		// init variables
 		this.data = dataset;
 		int count = dataset.size();
 		int[] order = r.randperm(dataset.size());
-		clusters = new ArrayList<List<Integer>>();
-		rand = new Random();
-		this.comparisons = 0;
-		this.comptemplate = 0;
-		this.ambiguities = 0;
+
 		
 		// template computation
-			
 		double template = 0;
 		int nbrenc = (int) (learning_sample * count);
 		this.comptemplate = nbrenc;
@@ -94,24 +93,7 @@ public class BoundedClustering<D> {
 		
 		// normalize threshold to mean of the seen exemples
 		template = template / nbrenc;
-		
-		// unused - get exact value range
-		/*
-		for (int i = 0 ; i < count ; i++) {
-			for (int j = i+1 ; j < count ; j++) {
-				d = 0;
-				try {
-					d = cp.compare(this.dat.get(i), this.dat.get(j));
-					if (d > maxdistance) maxdistance = d;
-					//eventually check for minimal distance between non-equal points also
-					if (d < mindistance) mindistance = d;
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		*/
-		
+
 		// range value evaluation: as overestimation is not problematic, 
 		// estimated range = 2 times previously evaluated range
 		// avoid computing the exact range --> quadratic complexity
@@ -471,104 +453,6 @@ public class BoundedClustering<D> {
 			sum += max_row(tab);
 		}
 		return sum / partition.size();
-	}
-	
-	
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		int nbrun = 100;
-		int bound_type = BoundedClustering.BERNSTEIN_BOUND;
-		
-		// parsing arguments
-		switch (args.length) {
-		case 0:
-			break;
-		case 1:
-			if (args[0].equals("B")) bound_type = BoundedClustering.BERNSTEIN_BOUND;
-			else if (args[0].equals("H")) bound_type = BoundedClustering.HOEFFDING_BOUND;
-			else bound_type = BoundedClustering.STUDENT_BOUND;
-			break;
-		case 2:
-			if (args[0].equals("B")) bound_type = BoundedClustering.BERNSTEIN_BOUND;
-			else if (args[0].equals("H")) bound_type = BoundedClustering.HOEFFDING_BOUND;
-			else bound_type = BoundedClustering.STUDENT_BOUND;
-			try{
-				Integer iter = new Integer(args[1]);
-				nbrun = iter.intValue();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			break;
-		default: break;
-		}
-		
-		String path = "../dat/data/";
-		String outputpath = "../res/";
-		String filename = "liste_alea2.txt";
-
-		try{
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(path + filename)));
-			String line;
-
-			Minkowski cp = new Minkowski(2);
-			
-			
-			BoundedClustering<float[]> algo;
-			IReader<float[]> sdr = new SimpleDataReader();
-			Data<float[]> dat = null;
-			
-			DateFormat dateFormat = new SimpleDateFormat("ddMMyyyy_HHmmss");
-			Date date = new Date();
-			String outputfilename = dateFormat.format(date);
-			
-			// BufferedWriter bw = new BufferedWriter(new FileWriter(new File(outputpath + outputfilename + ".txt")));
-			// FileWriter out = new FileWriter(outputfilename);
-			// out.close();
-			
-			while ((line = br.readLine()) != null){
-				if (line.startsWith("#")) continue;
-				String[] tmp = line.split(" ");
-				dat = sdr.read(path + tmp[0]);
-				double[] rand = new double[nbrun];
-				double[] pur = new double[nbrun];
-				double[] time = new double[nbrun];
-				double[] clusts = new  double[nbrun];
-				double[] comp = new double[nbrun];
-				double[] amb = new double[nbrun];
-				
-				long debut, fin;
-				
-				for (int test = 0; test < nbrun; test ++){
-					debut = System.currentTimeMillis();
-					algo = new BoundedClustering<float[]>(bound_type);
-					// params: List<D> di_blois.dataset, Comparator<D> comp, double learning_sample, double size
-					algo.cluster(dat.getData(), cp, 0.1, 0d);
-					fin = System.currentTimeMillis();
-					rand[test] = algo.rand(algo.createPartition(), dat.getLabels());
-					pur[test] = algo.purity(dat.getLabels(), algo.createPartition());
-					time[test] = fin - debut;
-					clusts[test] = algo.getNbClusters();
-					comp[test] = algo.getTotalNbComparisons();
-					amb[test] = algo.getAmbiguities();
-				}
-				
-				double mean = empiricalMean(rand, nbrun);
-				String s = tmp[0] + ";rand;" + mean + ";" + empiricalStd(rand, nbrun, mean) + ";time;";
-				mean = empiricalMean(time, nbrun);
-				s += mean + ";" + empiricalStd(time, nbrun, mean) + ";clusters;";
-				mean = empiricalMean(clusts, nbrun);
-				s += mean + ";" + empiricalStd(clusts, nbrun, mean) + "\n";
-				System.out.print(s);
-				FileWriter fw = new FileWriter(outputpath + outputfilename, true);
-				fw.write(s);
-				fw.close();
-				// bw.write(s);
-			}
-			// bw.close();
-		} catch (Exception e){e.printStackTrace();}
-
 	}
 
 }
