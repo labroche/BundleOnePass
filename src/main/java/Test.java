@@ -64,7 +64,7 @@ public class Test {
         bop.bootstrap(partition);
         System.out.println("BOP begins");
         long tstart = System.currentTimeMillis();
-        bop.cluster(items.subList(10001, items.size() - 1).stream(), new L1(), 0.05, 0.5, max_radius*0.75);
+        bop.cluster(items.stream(), new L1(), 0.05, 10000);
         long tend = System.currentTimeMillis();
         System.out.println("BOP done");
         System.out.println("Exec Time was " + (tend - tstart)/1000 + " seconds");

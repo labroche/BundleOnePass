@@ -43,18 +43,58 @@ public class BOPBundles<D> {
     }
 
     /** Main di_blois.clustering function: scan the di_blois.dataset and assigns data objects to clusters */
-    public void cluster(Stream<D> dataset, Comparator<D> comp, double size, double range_value, double template){
+    public void cluster(Stream<D> dataset, Comparator<D> comp, double size, int learning_sample){
 
 
         // init variables
         this.data = dataset;
         count = new Counter();
-        this.range_value = range_value;
+        Iterator<D> data = dataset.iterator();
+        List<D> learning_stuff = new ArrayList<>();
+
+        // template computation
+        double template = 0;
+        this.comptemplate = learning_sample;
+
+        double maxdistance = Double.MIN_VALUE;
+        double mindistance = Double.MAX_VALUE;
+
+        double d;
+        for (int k = 0; k < learning_sample/2; k++){
+            //get two different elements at random
+            D a = data.next();
+            D b = data.next();
+            learning_stuff.add(a);
+            learning_stuff.add(b);
+
+            //compare them and add their distance to the threshold
+            try {
+                d = comp.compare(a, b);
+                template += d;
+                if (d > maxdistance) maxdistance = d;
+                else if (d < mindistance) mindistance = d;
+            } catch (Exception e) {
+                System.err.println("Error while comparing" + a + " and " + b);
+                e.printStackTrace();
+            }
+        }
+
+        // normalize threshold to mean of the seen exemples
+        template = template / learning_sample;
+
+        // range value evaluation: as overestimation is not problematic,
+        // estimated range = 2 times previously evaluated range
+        // avoid computing the exact range --> quadratic complexity
+
+        range_value = 2* (maxdistance - mindistance);
 
         // cluster building
 
-        data.forEach( dataPoint -> {
+        double finalTemplate = template;
+        data.forEachRemaining(dataPoint -> {
             count.i++;
+            if (count.i % 1000 == 0)
+                System.out.println(count.i + " items parsed");
             // return nearest cluster and set global variable mindist
 
             int cluster = race(dataPoint, clusters, comp, 0.9);
@@ -62,7 +102,29 @@ public class BOPBundles<D> {
             // at this point, mindist is set to the distance to 'cluster'
 
             // assignment to nearest cluster
-            if (cluster == -1 || mindist > template){
+            if (cluster == -1 || mindist > finalTemplate){
+                // build a new cluster
+                List<D> c = new ArrayList<>();
+                c.add(dataPoint);
+                this.clusters.add(c);
+            } else {
+                // join nearest cluster
+                clusters.get(cluster).add(dataPoint);
+            }
+        });
+
+        learning_stuff.forEach(dataPoint -> {
+            count.i++;
+            if (count.i % 1000 == 0)
+                System.out.println(count.i + " items parsed");
+            // return nearest cluster and set global variable mindist
+
+            int cluster = race(dataPoint, clusters, comp, 0.9);
+
+            // at this point, mindist is set to the distance to 'cluster'
+
+            // assignment to nearest cluster
+            if (cluster == -1 || mindist > finalTemplate){
                 // build a new cluster
                 List<D> c = new ArrayList<>();
                 c.add(dataPoint);
