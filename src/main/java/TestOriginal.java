@@ -1,6 +1,7 @@
 import di_blois.clustering.FCM;
 import di_blois.comparator.L1;
 import di_blois.onePassClustering.BOPBundles;
+import di_blois.onePassClustering.BoundedClustering;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import utilities.misc.Nd4jUtils;
@@ -24,17 +25,17 @@ public class TestOriginal {
         dataset.clear();
         System.out.println("Data loaded");
 
-        BOPBundles<Pair<String, float[]>> bop = new BOPBundles<>(BOPBundles.HOEFFDING_BOUND);
+        BoundedClustering<Pair<String, float[]>> bop = new BoundedClustering<>(0);
         System.out.println("BOP begins");
         long tstart = System.currentTimeMillis();
-        bop.cluster(items.stream(), new L1(), 0.05, 10000);
+        bop.cluster(items, new L1(), 0.10, 0.05);
         long tend = System.currentTimeMillis();
         System.out.println("BOP done");
         System.out.println("Exec Time was " + (tend - tstart)/1000 + " seconds");
         System.out.println("Found " + bop.getNbClusters() + " clusters.");
         System.out.println(bop.getTotalNbComparisons());
 
-        Nd4jUtils.writePartition(bop.getPartition(), args[1]);
+        //Nd4jUtils.writePartition(bop.getPartition(), args[1]);
 
 
     }

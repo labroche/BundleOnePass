@@ -136,7 +136,7 @@ public class BOPBundles<D> {
         });
 
         // finalize cluster
-        if (size > 0){
+        /*if (size > 0){
             ArrayList<D> others = new ArrayList<>();
 
             int minSize = (int)(size * count.i);
@@ -151,7 +151,7 @@ public class BOPBundles<D> {
             }
 
             if (others.size() > 0) clusters.add(others);
-        }
+        }*/
     }
 
     /** Race the clusters */

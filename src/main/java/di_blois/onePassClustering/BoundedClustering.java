@@ -104,8 +104,12 @@ public class BoundedClustering<D> {
 		
 		for (int i = 0; i < dataset.size(); i++){
 			// return nearest cluster and set global variable mindist
+			if (i%1000==0) {
+				System.out.println(i + " points done. With " + comparisons + " comparisons.");
+				comparisons = 0;
+			}
 			
-			int cluster = race(order[i], clusters, comp, 1.0);
+			int cluster = race(order[i], clusters, comp, 0.1);
 			
 			// at this point, mindist is set to the distance to 'cluster'
 			
@@ -181,7 +185,7 @@ public class BoundedClustering<D> {
 					
 					try {
 						distances[c][i] = cp.compare(this.data.get(obj), this.data.get(d));
-						
+						comparisons++;
 						mean_values[c] = empiricalMean(distances[c], i+1);
 								
 						if (bound_type == HOEFFDING_BOUND) {
@@ -292,8 +296,12 @@ public class BoundedClustering<D> {
 		
 		return val;
 	}
-	
-	
+
+
+	public List<List<Integer>> getClusters() {
+		return clusters;
+	}
+
 	/**
 	 * empirical Bernstein bound
 	 * if the possible range is large w.r.t. the sample's standard deviation, the resulting
@@ -301,7 +309,8 @@ public class BoundedClustering<D> {
 	 * @param errorprobability - the probability that the real mean is outside 
 	 * 								the bounds for this sample 
 	 * @param value_range - the largest possible range of the observations
-	 * @return  
+	 * @return
+
 	 */
 	private double bernsteinEpsilon (double mean, double std, int nelements, double errorprobability, double value_range) {
 		double log3errorprob = Math.log(3/errorprobability);
