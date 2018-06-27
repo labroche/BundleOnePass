@@ -28,14 +28,15 @@ public class TestOriginal {
         BoundedClustering<Pair<String, float[]>> bop = new BoundedClustering<>(0);
         System.out.println("BOP begins");
         long tstart = System.currentTimeMillis();
-        bop.cluster(items, new L1(), 0.10, 0.05);
+        bop.cluster(items.subList(0, 15000), new L1(), 0.10, 0.01);
         long tend = System.currentTimeMillis();
         System.out.println("BOP done");
         System.out.println("Exec Time was " + (tend - tstart)/1000 + " seconds");
         System.out.println("Found " + bop.getNbClusters() + " clusters.");
         System.out.println(bop.getTotalNbComparisons());
-
-        //Nd4jUtils.writePartition(bop.getPartition(), args[1]);
+        System.out.println("Cluster size:");
+        bop.getPartition().forEach(cluster -> System.out.println(cluster.size()));
+        Nd4jUtils.writePartition(bop.getPartition(), args[1]);
 
 
     }
