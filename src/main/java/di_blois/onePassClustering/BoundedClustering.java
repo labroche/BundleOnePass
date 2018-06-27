@@ -2,24 +2,10 @@ package di_blois.onePassClustering;
 
 import di_blois.clustering.RandPerm;
 import di_blois.comparator.Comparator;
-import di_blois.comparator.Minkowski;
-import di_blois.dataset.Data;
-import org.apache.commons.math3.distribution.TDistribution;
-import di_blois.reader.IReader;
-import di_blois.reader.SimpleDataReader;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.io.InputStreamReader;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * Implements a one pass di_blois.clustering algorithm based on various statistical bounds
@@ -35,7 +21,7 @@ public class BoundedClustering<D> {
 	public static final int STUDENT_BOUND = 2;
 	public final double error_probability = 0.05;
     //Spawning thread pool
-    private final ThreadPoolExecutor pool;
+    private final WorkerPool<BopWorker<D>, CompareTask<D>> pool;
 	
 	
 	// Variables
@@ -61,7 +47,8 @@ public class BoundedClustering<D> {
 		this.comparisons = 0;
 		this.comptemplate = 0;
 		this.ambiguities = 0;
-		pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() - 2));
+	    int threads = 4;//Math.max(2, Runtime.getRuntime().availableProcessors() - 2);
+	    pool = new WorkerPool<>(threads, new BopWorkerFactory());
 	}
 	
 	/** Main di_blois.clustering function: scan the di_blois.dataset and assigns data objects to clusters */
@@ -151,8 +138,6 @@ public class BoundedClustering<D> {
 			if (others.size() > 0) clusters.add(others);
 		}
 
-        //Shutting down the pool
-        pool.shutdown();
 	}
 	
 	/** Race the clusters */
@@ -186,58 +171,18 @@ public class BoundedClustering<D> {
 
 		for (int i = 0 ; i < maxsize ; i++) {
 
-		    // We setup a latch allowing us to signal the main thread we have finished
-            CountDownLatch latch = new CountDownLatch(clusters.size());
 
 			for (int c = 0; c < clusters.size(); c++){
 
-                int finalC = c, finalI = i;
-                pool.execute(() -> {
-                    List<Integer> clust = clusters.get(finalC);
-                    double epsilon;
-
-                    if (inrace[finalC] && (finalI < clust.size())) {
-
-                        //sample another data
-                        int d = clust.get(rand.nextInt(clust.size()));
-
-                        try {
-                            distances[finalC][finalI] = cp.compare(this.data.get(obj), this.data.get(d));
-                            mean_values[finalC] = empiricalMean(distances[finalC], finalI +1);
-
-                            if (bound_type == HOEFFDING_BOUND) {
-                                epsilon = epsilon_multiplier * hoeffdingsEpsilon(mean_values[finalC], finalI +1, error_probability, range_value);
-
-                            } else if (bound_type == BERNSTEIN_BOUND){
-                                //use bernstein bound
-                                double std = empiricalStd(distances[finalC], finalI +1, mean_values[finalC]);
-                                epsilon = epsilon_multiplier * bernsteinEpsilon(mean_values[finalC], std, finalI +1, error_probability, range_value);
-                            } else {
-                                double std = unbiasedEmpiricalStd(distances[finalC], finalI +1, mean_values[finalC]);
-                                epsilon = epsilon_multiplier * studentsEpsilon(std, finalI +1, 1 - error_probability, range_value);
-                            }
-
-
-                            lower_bounds[finalC] = mean_values[finalC] - epsilon;
-                            upper_bounds[finalC] = mean_values[finalC] + epsilon;
-
-
-                        } catch (Exception e) {
-                            System.err.println("Error while comparing" + obj + " and " + d);
-                            e.printStackTrace();
-                        }
-                    }
-                    latch.countDown();
-                });
+                pool.submit(new CompareTask<D>(bound_type, i, c, obj, clusters.get(c), inrace, distances, mean_values, upper_bounds, lower_bounds, cp, data, error_probability, epsilon_multiplier, range_value));
 
 			} // end for each cluster
             comparisons += clusters.size();
-            //Wait for all comparisons to finish
-            try {latch.await();}
-            catch (InterruptedException e) {
-			    System.err.printf("Fatal error compute thread interrupted, aborting commutation for %s. %n", data.get(obj));
-			    return 0;
+
+			while (!pool.isDone()) {
+
             }
+
 
             for (int c = 0; c < clusters.size(); c++) {
                 if (upper_bounds[c] < upper_bounds[current_winner])
