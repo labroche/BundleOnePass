@@ -2,7 +2,9 @@ package di_blois.comparator;
 
 
 public class Minkowski implements Comparator<float[]> {
-	
+	/**
+	 *puissance : si order = 1 alors distance de Manhattan, si order = 2 alors distance Euclidienne
+	 */
 	int order;
 	
 	public Minkowski(int order){
@@ -11,14 +13,14 @@ public class Minkowski implements Comparator<float[]> {
 	
 	/**
 	 * Fonction de comparaison de vecteurs numeriques
-	 * @param vector1 : premier vecteur
-	 * @param vector2 : second vecteur
-	 * @param order : puissance : si order = 1 alors distance de Manhattan, si order = 2 alors distance Euclidienne
+	 * @param v1 : premier vecteur
+	 * @param v2 : second vecteur
 	 * @return la distance de Minkowski entre les 2 vecteurs  l'ordre specifie
 	 */
-	public double compare(float[] v1, float[] v2) throws Exception{
+	public double compare(float[] v1, float[] v2){
 		if (v1.length != v2.length){
-			throw new Exception("Vectors must contain the same number of numerical values");
+			System.err.println("Error in comparisons vectors must be the same length");
+			return -1;
 		} else {
 			double somme = 0;
 			for (int i = 0; i < v1.length; i++){

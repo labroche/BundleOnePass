@@ -21,22 +21,17 @@ public class MedoidsQuantization<D> {
         this.metric = metric;
         this.minSep = minSep;
         medoids = new ArrayList<>(10);
+        partition = new ArrayList<>();
     }
 
     public void cluster(Stream<D> data){
         Iterator<D> it = data.iterator();
 
         newCulster(it.next());
-        partition.add(new ArrayList<>(500));
 
         it.forEachRemaining(d -> {
             for (int i = 0; i < medoids.size(); i++) {
-                try {
-                    distance[i] = metric.compare(medoids.get(i), d);
-                } catch (Exception e) {
-                    distance[i] = Double.MAX_VALUE;
-                    e.printStackTrace(); //TODO Create garbage stack for those points
-                }
+                distance[i] = metric.compare(medoids.get(i), d);
             }
 
             int chosen = minI(distance, medoids.size());
@@ -53,6 +48,8 @@ public class MedoidsQuantization<D> {
     }
 
     private void updateMedoid(int chosen, D point) {
+        if (medoids.size() == 1)
+            return;
         double sepForP = avg(distance, medoids.size(), chosen);
         if (sepForP > avgSep[chosen]) {
             setMedoid(chosen, point);
@@ -69,20 +66,16 @@ public class MedoidsQuantization<D> {
             for (int i = 0; i < medoids.size(); i++) {
                 double sum = 0;
                 for (int j = 0; j < medoids.size(); j++) {
-                    if (j != i) {
-                        try {
-                            sum += metric.compare(medoids.get(i), medoids.get(j));
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
+                    if (j != i)
+                        sum += metric.compare(medoids.get(i), medoids.get(j));
                 }
 
                 avgSep[i] = sum/(medoids.size());
             }
         }
         else {
-            //TODO what do we do if only one cluster !!!
+            return;
+            //We don't update medoids until we have at least 2 clusters
         }
 
     }
@@ -92,6 +85,8 @@ public class MedoidsQuantization<D> {
     }
 
     private void newCulster(D medoid){
+        partition.add(new ArrayList<>(500));
+        partition.get(partition.size() - 1).add(medoid);
         medoids.add(medoid);
         if (medoids.size()>= distance.length){
             double[] tmp = new double[distance.length + 100];
